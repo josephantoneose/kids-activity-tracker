@@ -5,53 +5,112 @@ import KidSection from './components/KidSection';
 import DateSelector from './components/DateSelector';
 import { calculateAdherence } from './utils';
 import { startOfToday } from 'date-fns';
+import { db } from './firebase';
+import {
+  collection,
+  onSnapshot,
+  addDoc,
+  updateDoc,
+  deleteDoc,
+  doc,
+  writeBatch,
+  query
+} from 'firebase/firestore';
 
-// Initial dummy data
+// Initial dummy data as fallback
 const DEFAULT_ACTIVITIES = [
-  { id: '1', kid: 'Ryan', name: 'Study (30 mins)', days: [0, 1, 2, 3, 4, 5, 6], history: {} },
-  { id: '2', kid: 'Ryan', name: 'Music - Breathing', days: [0, 1, 2, 3, 4, 5, 6], history: {} },
-  { id: '3', kid: 'Ryan', name: 'Music - Practice', days: [0, 1, 2, 3, 4, 5, 6], history: {} },
-  { id: '4', kid: 'Anya', name: 'Study (30 mins)', days: [0, 1, 2, 3, 4, 5, 6], history: {} },
-  { id: '5', kid: 'Anya', name: 'Reading', days: [0, 1, 2, 3, 4, 5, 6], history: {} },
-  { id: '6', kid: 'Anya', name: 'Piano Practice', days: [0, 1, 2, 3, 4, 5, 6], history: {} },
+  { kid: 'Ryan', name: 'Study (30 mins)', days: [0, 1, 2, 3, 4, 5, 6], history: {} },
+  { kid: 'Ryan', name: 'Music - Breathing', days: [0, 1, 2, 3, 4, 5, 6], history: {} },
+  { kid: 'Ryan', name: 'Music - Practice', days: [0, 1, 2, 3, 4, 5, 6], history: {} },
+  { kid: 'Anya', name: 'Study (30 mins)', days: [0, 1, 2, 3, 4, 5, 6], history: {} },
+  { kid: 'Anya', name: 'Reading', days: [0, 1, 2, 3, 4, 5, 6], history: {} },
+  { kid: 'Anya', name: 'Piano Practice', days: [0, 1, 2, 3, 4, 5, 6], history: {} },
 ];
 
 function App() {
-  const [activities, setActivities] = useState(() => {
-    const saved = localStorage.getItem('activities');
-    return saved ? JSON.parse(saved) : DEFAULT_ACTIVITIES;
-  });
+  const [activities, setActivities] = useState([]);
+  const [loading, setLoading] = useState(true);
 
   const [isEditMode, setIsEditMode] = useState(false);
   const [activeTab, setActiveTab] = useState('Ryan');
   const [selectedDate, setSelectedDate] = useState(startOfToday());
 
+  // Subscribe to changes
   useEffect(() => {
-    localStorage.setItem('activities', JSON.stringify(activities));
-  }, [activities]);
+    const q = query(collection(db, 'activities'));
+    const unsubscribe = onSnapshot(q, async (snapshot) => {
+      const data = snapshot.docs.map(doc => ({
+        ...doc.data(),
+        id: doc.id
+      }));
 
-  const toggleActivity = (id, dateStr) => {
-    setActivities(prev => prev.map(act => {
-      if (act.id === id) {
-        const newHistory = { ...act.history };
-        const currentStatus = newHistory[dateStr] || false;
-        newHistory[dateStr] = !currentStatus;
-        return { ...act, history: newHistory };
+      // Initial Seed if Empty
+      if (data.length === 0 && !snapshot.metadata.fromCache) {
+        // Double check loading state to prevent redundant writes
+        // If empty, let's write defaults
+        console.log("Seeding default data...");
+        const batch = writeBatch(db);
+        DEFAULT_ACTIVITIES.forEach(act => {
+          const newRef = doc(collection(db, 'activities'));
+          batch.set(newRef, act);
+        });
+        await batch.commit();
+        // The listener will fire again with the new data
+      } else {
+        setActivities(data);
+        setLoading(false);
       }
-      return act;
-    }));
+    });
+
+    return () => unsubscribe();
+  }, []);
+
+  const toggleActivity = async (id, dateStr) => {
+    const activity = activities.find(a => a.id === id);
+    if (!activity) return;
+
+    // We can infer the new status based on current local state for immediate feedback
+    // But for the DB update, we just toggle what we see.
+    // Ideally we use Firestore transactions for atomic toggles, but simple reading is OK here.
+    const currentStatus = activity.history?.[dateStr] || false;
+    const newStatus = !currentStatus;
+
+    try {
+      await updateDoc(doc(db, 'activities', id), {
+        [`history.${dateStr}`]: newStatus
+      });
+    } catch (e) {
+      console.error("Error toggling activity: ", e);
+    }
   };
 
-  const addActivity = (newActivity) => {
-    setActivities(prev => [...prev, { ...newActivity, id: Date.now().toString(), history: {} }]);
+  const addActivity = async (newActivity) => {
+    try {
+      await addDoc(collection(db, 'activities'), {
+        ...newActivity,
+        history: {}
+      });
+    } catch (e) {
+      console.error("Error adding activity: ", e);
+    }
   };
 
-  const updateActivity = (updatedActivity) => {
-    setActivities(prev => prev.map(act => act.id === updatedActivity.id ? updatedActivity : act));
+  const updateActivity = async (updatedActivity) => {
+    try {
+      // Destructure to separate id from data
+      const { id, ...data } = updatedActivity;
+      await updateDoc(doc(db, 'activities', id), data);
+    } catch (e) {
+      console.error("Error updating activity: ", e);
+    }
   };
 
-  const removeActivity = (id) => {
-    setActivities(prev => prev.filter(act => act.id !== id));
+  const removeActivity = async (id) => {
+    try {
+      await deleteDoc(doc(db, 'activities', id));
+    } catch (e) {
+      console.error("Error removing activity: ", e);
+    }
   };
 
   const ryanActivities = useMemo(() => activities.filter(a => a.kid === 'Ryan'), [activities]);
@@ -59,6 +118,14 @@ function App() {
 
   const ryanAdherence = useMemo(() => calculateAdherence(ryanActivities), [ryanActivities]);
   const anyaAdherence = useMemo(() => calculateAdherence(anyaActivities), [anyaActivities]);
+
+  if (loading && activities.length === 0) {
+    return (
+      <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh', background: 'var(--bg-primary)', color: 'white' }}>
+        Loading...
+      </div>
+    );
+  }
 
   return (
     <div className="app-container" style={{ padding: '20px', minHeight: '100vh', display: 'flex', flexDirection: 'column', gap: '20px' }}>

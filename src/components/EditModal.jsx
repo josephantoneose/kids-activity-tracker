@@ -6,8 +6,28 @@ const EditModal = ({ activities, onClose, onAdd, onUpdate, onRemove }) => {
     const [activeKid, setActiveKid] = useState('Ryan');
     const [newActivity, setNewActivity] = useState('');
     const [newActivityDays, setNewActivityDays] = useState([0, 1, 2, 3, 4, 5, 6]); // All days by default
+    const [editingId, setEditingId] = useState(null);
+    const [editName, setEditName] = useState('');
 
     const kidActivities = activities.filter(a => a.kid === activeKid);
+
+    const startEditing = (act) => {
+        setEditingId(act.id);
+        setEditName(act.name);
+    };
+
+    const saveEdit = (act) => {
+        if (editName.trim()) {
+            onUpdate({ ...act, name: editName });
+        }
+        setEditingId(null);
+        setEditName('');
+    };
+
+    const cancelEdit = () => {
+        setEditingId(null);
+        setEditName('');
+    };
 
     const handleDayToggle = (activity, dayIndex) => {
         let newDays;
@@ -113,14 +133,45 @@ const EditModal = ({ activities, onClose, onAdd, onUpdate, onRemove }) => {
                                 borderRadius: '8px',
                                 border: '1px solid rgba(255,255,255,0.05)'
                             }}>
-                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-                                    <span style={{ fontWeight: '500' }}>{act.name}</span>
-                                    <button
-                                        onClick={() => onRemove(act.id)}
-                                        style={{ color: 'var(--danger)', fontSize: '0.8rem' }}
-                                    >
-                                        Delete
-                                    </button>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px', gap: '8px' }}>
+                                    {editingId === act.id ? (
+                                        <div style={{ display: 'flex', flex: 1, gap: '8px' }}>
+                                            <input
+                                                value={editName}
+                                                onChange={e => setEditName(e.target.value)}
+                                                style={{
+                                                    flex: 1,
+                                                    background: 'rgba(0,0,0,0.2)',
+                                                    border: '1px solid var(--accent-ryan)',
+                                                    borderRadius: '4px',
+                                                    padding: '4px 8px',
+                                                    color: 'white',
+                                                    fontSize: '0.9rem'
+                                                }}
+                                                autoFocus
+                                            />
+                                            <button onClick={() => saveEdit(act)} style={{ color: 'var(--success)', fontSize: '0.8rem' }}>Save</button>
+                                            <button onClick={cancelEdit} style={{ color: 'var(--text-secondary)', fontSize: '0.8rem' }}>Cancel</button>
+                                        </div>
+                                    ) : (
+                                        <>
+                                            <span style={{ fontWeight: '500', flex: 1 }}>{act.name}</span>
+                                            <div style={{ display: 'flex', gap: '12px' }}>
+                                                <button
+                                                    onClick={() => startEditing(act)}
+                                                    style={{ color: 'var(--text-secondary)', fontSize: '0.8rem' }}
+                                                >
+                                                    Edit
+                                                </button>
+                                                <button
+                                                    onClick={() => onRemove(act.id)}
+                                                    style={{ color: 'var(--danger)', fontSize: '0.8rem' }}
+                                                >
+                                                    Delete
+                                                </button>
+                                            </div>
+                                        </>
+                                    )}
                                 </div>
 
                                 {/* Day selector for existing */}
