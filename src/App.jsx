@@ -213,6 +213,9 @@ function App() {
           onRemove={removeActivity}
         />
       )}
+      <div style={{ textAlign: 'center', color: 'var(--text-secondary)', fontSize: '0.7rem', paddingBottom: '10px' }}>
+        v1.2 - Time Support Added
+      </div>
     </div>
   );
 }
