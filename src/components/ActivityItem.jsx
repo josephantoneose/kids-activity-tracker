@@ -21,14 +21,25 @@ const ActivityItem = ({ activity, dateStr, onToggle, color }) => {
                 borderColor: isCompleted ? color : 'transparent'
             }}
         >
-            <span style={{
-                flex: 1,
-                textDecoration: isCompleted ? 'line-through' : 'none',
-                color: isCompleted ? 'var(--text-secondary)' : 'var(--text-primary)',
-                fontWeight: isCompleted ? '400' : '500'
-            }}>
-                {activity.name}
-            </span>
+            <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
+                {activity.time && (
+                    <span style={{
+                        fontSize: '0.8rem',
+                        color: isCompleted ? 'var(--text-secondary)' : color,
+                        fontWeight: '600',
+                        marginBottom: '2px'
+                    }}>
+                        {activity.time}
+                    </span>
+                )}
+                <span style={{
+                    textDecoration: isCompleted ? 'line-through' : 'none',
+                    color: isCompleted ? 'var(--text-secondary)' : 'var(--text-primary)',
+                    fontWeight: isCompleted ? '400' : '500'
+                }}>
+                    {activity.name}
+                </span>
+            </div>
             <div style={{
                 width: '24px',
                 height: '24px',

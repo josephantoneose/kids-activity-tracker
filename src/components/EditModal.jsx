@@ -4,29 +4,38 @@ const DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
 const EditModal = ({ activities, onClose, onAdd, onUpdate, onRemove }) => {
     const [activeKid, setActiveKid] = useState('Ryan');
+
+    // New Activity State
     const [newActivity, setNewActivity] = useState('');
-    const [newActivityDays, setNewActivityDays] = useState([0, 1, 2, 3, 4, 5, 6]); // All days by default
+    const [newTime, setNewTime] = useState('');
+    const [newActivityDays, setNewActivityDays] = useState([0, 1, 2, 3, 4, 5, 6]);
+
+    // Editing State
     const [editingId, setEditingId] = useState(null);
     const [editName, setEditName] = useState('');
+    const [editTime, setEditTime] = useState('');
 
     const kidActivities = activities.filter(a => a.kid === activeKid);
 
     const startEditing = (act) => {
         setEditingId(act.id);
         setEditName(act.name);
+        setEditTime(act.time || '');
     };
 
     const saveEdit = (act) => {
         if (editName.trim()) {
-            onUpdate({ ...act, name: editName });
+            onUpdate({ ...act, name: editName, time: editTime });
         }
         setEditingId(null);
         setEditName('');
+        setEditTime('');
     };
 
     const cancelEdit = () => {
         setEditingId(null);
         setEditName('');
+        setEditTime('');
     };
 
     const handleDayToggle = (activity, dayIndex) => {
@@ -52,9 +61,11 @@ const EditModal = ({ activities, onClose, onAdd, onUpdate, onRemove }) => {
         onAdd({
             kid: activeKid,
             name: newActivity,
+            time: newTime,
             days: newActivityDays,
         });
         setNewActivity('');
+        setNewTime('');
         setNewActivityDays([0, 1, 2, 3, 4, 5, 6]);
     };
 
@@ -135,27 +146,49 @@ const EditModal = ({ activities, onClose, onAdd, onUpdate, onRemove }) => {
                             }}>
                                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px', gap: '8px' }}>
                                     {editingId === act.id ? (
-                                        <div style={{ display: 'flex', flex: 1, gap: '8px' }}>
-                                            <input
-                                                value={editName}
-                                                onChange={e => setEditName(e.target.value)}
-                                                style={{
-                                                    flex: 1,
-                                                    background: 'rgba(0,0,0,0.2)',
-                                                    border: '1px solid var(--accent-ryan)',
-                                                    borderRadius: '4px',
-                                                    padding: '4px 8px',
-                                                    color: 'white',
-                                                    fontSize: '0.9rem'
-                                                }}
-                                                autoFocus
-                                            />
-                                            <button onClick={() => saveEdit(act)} style={{ color: 'var(--success)', fontSize: '0.8rem' }}>Save</button>
-                                            <button onClick={cancelEdit} style={{ color: 'var(--text-secondary)', fontSize: '0.8rem' }}>Cancel</button>
+                                        <div style={{ display: 'flex', flexDirection: 'column', flex: 1, gap: '8px' }}>
+                                            <div style={{ display: 'flex', gap: '8px' }}>
+                                                <input
+                                                    value={editName}
+                                                    onChange={e => setEditName(e.target.value)}
+                                                    placeholder="Activity Name"
+                                                    style={{
+                                                        flex: 1,
+                                                        background: 'rgba(0,0,0,0.2)',
+                                                        border: '1px solid var(--accent-ryan)',
+                                                        borderRadius: '4px',
+                                                        padding: '6px',
+                                                        color: 'white',
+                                                        fontSize: '0.9rem'
+                                                    }}
+                                                    autoFocus
+                                                />
+                                                <input
+                                                    value={editTime}
+                                                    onChange={e => setEditTime(e.target.value)}
+                                                    placeholder="Time (e.g. 6pm)"
+                                                    style={{
+                                                        width: '100px',
+                                                        background: 'rgba(0,0,0,0.2)',
+                                                        border: '1px solid var(--accent-ryan)',
+                                                        borderRadius: '4px',
+                                                        padding: '6px',
+                                                        color: 'white',
+                                                        fontSize: '0.9rem'
+                                                    }}
+                                                />
+                                            </div>
+                                            <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
+                                                <button onClick={() => saveEdit(act)} style={{ color: 'var(--success)', fontSize: '0.8rem', fontWeight: 'bold' }}>Save</button>
+                                                <button onClick={cancelEdit} style={{ color: 'var(--text-secondary)', fontSize: '0.8rem' }}>Cancel</button>
+                                            </div>
                                         </div>
                                     ) : (
                                         <>
-                                            <span style={{ fontWeight: '500', flex: 1 }}>{act.name}</span>
+                                            <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
+                                                <span style={{ fontWeight: '500' }}>{act.name}</span>
+                                                {act.time && <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>{act.time}</span>}
+                                            </div>
                                             <div style={{ display: 'flex', gap: '12px' }}>
                                                 <button
                                                     onClick={() => startEditing(act)}
@@ -175,7 +208,7 @@ const EditModal = ({ activities, onClose, onAdd, onUpdate, onRemove }) => {
                                 </div>
 
                                 {/* Day selector for existing */}
-                                <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap' }}>
+                                <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap', marginTop: '4px' }}>
                                     {DAYS.map((day, idx) => {
                                         const isSelected = act.days.includes(idx);
                                         return (
@@ -202,28 +235,44 @@ const EditModal = ({ activities, onClose, onAdd, onUpdate, onRemove }) => {
                     {/* Add New */}
                     <div style={{ marginTop: '24px', paddingTop: '24px', borderTop: '1px solid rgba(255,255,255,0.1)' }}>
                         <h4 style={{ marginBottom: '12px' }}>Add New Activity</h4>
-                        <div style={{ display: 'flex', gap: '8px', marginBottom: '12px' }}>
-                            <input
-                                type="text"
-                                value={newActivity}
-                                onChange={(e) => setNewActivity(e.target.value)}
-                                placeholder="E.g. Math homework"
-                                style={{
-                                    flex: 1,
-                                    background: 'rgba(0,0,0,0.2)',
-                                    border: '1px solid rgba(255,255,255,0.1)',
-                                    borderRadius: '8px',
-                                    padding: '10px',
-                                    color: 'white'
-                                }}
-                            />
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '12px' }}>
+                            <div style={{ display: 'flex', gap: '8px' }}>
+                                <input
+                                    type="text"
+                                    value={newActivity}
+                                    onChange={(e) => setNewActivity(e.target.value)}
+                                    placeholder="Activity Name (e.g. Math)"
+                                    style={{
+                                        flex: 2,
+                                        background: 'rgba(0,0,0,0.2)',
+                                        border: '1px solid rgba(255,255,255,0.1)',
+                                        borderRadius: '8px',
+                                        padding: '10px',
+                                        color: 'white'
+                                    }}
+                                />
+                                <input
+                                    type="text"
+                                    value={newTime}
+                                    onChange={(e) => setNewTime(e.target.value)}
+                                    placeholder="Time"
+                                    style={{
+                                        flex: 1,
+                                        background: 'rgba(0,0,0,0.2)',
+                                        border: '1px solid rgba(255,255,255,0.1)',
+                                        borderRadius: '8px',
+                                        padding: '10px',
+                                        color: 'white'
+                                    }}
+                                />
+                            </div>
                             <button
                                 className="btn-primary"
                                 onClick={onSubmitNew}
                                 disabled={!newActivity.trim()}
-                                style={{ opacity: !newActivity.trim() ? 0.5 : 1 }}
+                                style={{ opacity: !newActivity.trim() ? 0.5 : 1, width: '100%' }}
                             >
-                                Add
+                                Add Activity
                             </button>
                         </div>
                         {/* Day selector for new */}
